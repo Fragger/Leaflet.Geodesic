@@ -1,3 +1,9 @@
 [submodule "lib/Leaflet"]
 	path = lib/Leaflet
 	url = https://github.com/Leaflet/Leaflet.git
+[submodule "lib/Leaflet.Geodesic"]
+	path = lib/Leaflet.Geodesic
+	url = https://github.com/Fragger/Leaflet.Geodesic.git
+[submodule "lib/leaflet-tilejson"]
+	path = lib/leaflet-tilejson
+	url = https://github.com/kartena/leaflet-tilejson.git

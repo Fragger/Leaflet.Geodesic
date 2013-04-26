@@ -29,8 +29,9 @@
       </header>
       <section>
         <h1>Leaflet.Geodesic</h1>
-
-<p>Geodesic polylines and polygons for Leaflet</p>
+        <h3>Description</h3>
+        <p>Geodesic polylines and polygons for Leaflet</p>
+        <div id="map" style="width:543px; height: 450px;"></div>
       </section>
       <footer>
         <p>This project is maintained by <a href="https://github.com/Fragger">Fragger</a></p>
@@ -38,6 +39,10 @@
       </footer>
     </div>
     <script src="javascripts/scale.fix.js"></script>
-    
+    <script src="javascripts/osm.tilejson.js"></script>
+    <script src="lib/Leaflet/dist/leaflet.js"></script>
+    <script src="lib/leaflet-tilejson/src/tilejson.js"></script>
+    <script src="lib/Leaflet.Geodesic/src/L.Geodesic.js"></script>
+    <script>L.TileJSON.createMap('map', osmTileJSON);</script>
   </body>
 </html>
