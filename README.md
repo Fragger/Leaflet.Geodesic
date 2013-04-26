@@ -1,2 +1,7 @@
-[Leaflet.Geodesic](http://fragger.github.io/Leaflet.Geodesic/)
+Leaflet.Geodesic - pages
 ================
+Run the following to initialize the submodule
+```
+git submodule init
+git submodule update
+```
