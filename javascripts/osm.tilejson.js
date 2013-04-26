@@ -1,4 +1,4 @@
-var osmTileJSON = {
+window.osmTileJSON = {
     "tilejson": "2.0.0",
     "name": "OpenStreetMap",
     "description": "A free editable map of the whole world.",
