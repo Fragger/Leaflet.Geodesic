@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="lib/Leaflet/dist/leaflet.css" />
+    <!--[if lte IE 8]>
+        <link rel="stylesheet" href="lib/Leaflet/dist/leaflet.ie.css" />
+    <![endif]-->
+  </head>
+  <body>
+    <div id="map"></div>
+    <script src="lib/Leaflet/dist/leaflet.js"></script>
+    <script src="../src/L.Geodesic.js" ></script>
+    <script src="lib/leaflet-tilejson/src/tilejson.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="osm.tilejson.js"></script>
+    <script>
+      var map = L.TileJSON.createMap('map', osmTileJSON);
+      var latlngs = [[40.71435280, -74.0059731],[48.8566140, 2.35222190]]
+
+      var mark1 = L.marker(latlngs[0], {draggable: true}).addTo(map).on('drag', update);
+      var mark2 = L.marker(latlngs[1], {draggable: true}).addTo(map).on('drag', update);
+
+      // create a blue geodesic polyline from an arrays of LatLng points
+      var geodesicpolyline = L.geodesicPolyline(latlngs, {color: 'red'}).addTo(map);
+      // create a red polyline from an arrays of LatLng points
+      var polyline = L.polyline(latlngs, {color: 'blue'}).addTo(map);
+
+      // zoom the map to the polyline
+      map.fitBounds(geodesicpolyline.getBounds());
+
+      function update() {
+        var latlngs = [mark1.getLatLng(), mark2.getLatLng()];
+        geodesicpolyline.setLatLngs(latlngs);
+        polyline.setLatLngs(latlngs);
+      }
+    </script>
+  </body>
+</html>

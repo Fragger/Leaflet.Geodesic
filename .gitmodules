@@ -1,0 +1,6 @@
+[submodule "examples/lib/Leaflet"]
+	path = examples/lib/Leaflet
+	url = https://github.com/Leaflet/Leaflet.git
+[submodule "examples/lib/leaflet-tilejson"]
+	path = examples/lib/leaflet-tilejson
+	url = https://github.com/kartena/leaflet-tilejson.git
