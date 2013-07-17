@@ -10,20 +10,21 @@
       },
       setLatLngs: function (latlngs) {
         this._latlngsinit = this._convertLatLngs(latlngs);
-        this._latlngs = this._convertLatLngs(L.geodesicConvertLines(this._latlngsinit, fill));
         return this.redraw();
       },
       addLatLng: function (latlng) {
         this._latlngsinit.push(L.latLng(latlng));
-        this._latlngs = this._convertLatLngs(L.geodesicConvertLines(this._latlngsinit, fill));
         return this.redraw();
       },
       spliceLatLngs: function () { // (Number index, Number howMany)
         var removed = [].splice.apply(this._latlngsinit, arguments);
         this._convertLatLngs(this._latlngsinit);
-        this._latlngs = this._convertLatLngs(L.geodesicConvertLines(this._latlngsinit, fill));
         this.redraw();
         return removed;
+      },
+      redraw: function() {
+        this._latlngs = this._convertLatLngs(L.geodesicConvertLines(this._latlngsinit, fill));
+        return Klass.prototype.redraw.call(this);
       }
     });
   }
