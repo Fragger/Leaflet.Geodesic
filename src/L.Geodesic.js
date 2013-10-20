@@ -168,10 +168,9 @@
 
       var calcLatLngAtAngle = function(angle) {
         var lat = Math.asin(sinCentreLat*cosRadRadius + cosCentreLat*sinRadRadius*Math.cos(angle));
+        var lng = centreLng + Math.atan2(Math.sin(angle)*sinRadRadius*cosCentreLat, cosRadRadius-sinCentreLat*Math.sin(lat));
 
-        var lon = centreLng + Math.asin( Math.sin(angle) * sinRadRadius / cosCentreLat )
-
-        return L.latLng(lat * r2d,lon * r2d);
+        return L.latLng(lat * r2d,lng * r2d);
       }
 
 
