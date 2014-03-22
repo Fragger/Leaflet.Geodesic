@@ -35,8 +35,8 @@
   // points code that have been seen
   function geodesicConvertLine(startLatLng, endLatLng, convertedPoints) {
     var R = 6378137; // earth radius in meters (doesn't have to be exact)
-    var d2r = L.LatLng.DEG_TO_RAD;
-    var r2d = L.LatLng.RAD_TO_DEG;
+    var d2r = Math.PI/180.0;
+    var r2d = 180.0/Math.PI;
 
     // maths based on http://williams.best.vwh.net/avform.htm#Int
 
@@ -174,8 +174,8 @@
 
     _calcPoints: function() {
       var R = 6378137; //earth radius in meters (approx - taken from leaflet source code)
-      var d2r = L.LatLng.DEG_TO_RAD;
-      var r2d = L.LatLng.RAD_TO_DEG;
+      var d2r = Math.PI/180.0;
+      var r2d = 180.0/Math.PI;
 //console.log("geodesicCircle: radius = "+this._mRadius+"m, centre "+this._latlng.lat+","+this._latlng.lng);
 
       // circle radius as an angle from the centre of the earth
