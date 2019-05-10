@@ -140,6 +140,8 @@
     initialize: function (latlng, radius, options) {
       this._latlng = L.latLng(latlng);
       this._mRadius = radius;
+      this._radius = 11; // stub property to workaround https://github.com/IITC-CE/ingress-intel-total-conversion/issues/178
+                         // upstream report: https://github.com/Leaflet/Leaflet/issues/6656
 
       points = this._calcPoints();
 
