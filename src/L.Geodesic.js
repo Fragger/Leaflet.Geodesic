@@ -139,12 +139,8 @@
   L.GeodesicCircle = L.Polygon.extend({
     initialize: function (latlng, radius, options) {
       this._latlng = L.latLng(latlng);
-      this._mRadius = radius;
-      this._radius = 11; // stub property to workaround https://github.com/IITC-CE/ingress-intel-total-conversion/issues/178
-                         // upstream report: https://github.com/Leaflet/Leaflet/issues/6656
-
-      points = this._calcPoints();
-
+      this._radius = options.radius; // note: https://github.com/Leaflet/Leaflet/issues/6656
+      var points = this._calcPoints();
       L.Polygon.prototype.initialize.call(this, points, options);
     },
 
@@ -159,8 +155,8 @@
     },
 
     setRadius: function (radius) {
-      this._mRadius = radius;
-      points = this._calcPoints();
+      this._radius = radius;
+      var points = this._calcPoints();
       this.setLatLngs(points);
 
     },
@@ -170,7 +166,7 @@
     },
 
     getRadius: function() {
-      return this._mRadius;
+      return this._radius;
     },
 
 
@@ -178,10 +174,10 @@
       var R = 6367000.0; //earth radius in meters (approx - taken from leaflet source code)
       var d2r = Math.PI/180.0;
       var r2d = 180.0/Math.PI;
-//console.log("geodesicCircle: radius = "+this._mRadius+"m, centre "+this._latlng.lat+","+this._latlng.lng);
+//console.log("geodesicCircle: radius = "+this._radius+"m, centre "+this._latlng.lat+","+this._latlng.lng);
 
       // circle radius as an angle from the centre of the earth
-      var radRadius = this._mRadius / R;
+      var radRadius = this._radius / R;
 
 //console.log(" (radius in radians "+radRadius);
 
@@ -203,7 +199,7 @@
       }
 
 
-      var segments = Math.max(48,Math.floor(this._mRadius/1000));
+      var segments = Math.max(48,Math.floor(this._radius/1000));
 //console.log(" (drawing circle as "+segments+" lines)");
       var points = [];
       for (var i=0; i<segments; i++) {
