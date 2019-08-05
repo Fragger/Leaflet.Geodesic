@@ -1,4 +1,9 @@
 (function () {
+  // constants
+  var d2r = Math.PI/180.0;
+  var r2d = 180.0/Math.PI;
+  var earthR = 6367000.0; // earth radius in meters (doesn't have to be exact)
+
   function geodesicPoly(Klass, fill) {
     return Klass.extend({
       initialize: function (latlngs, options) {
@@ -28,9 +33,6 @@
   // to calculate intermediate points. hopefully this will avoid the rounding issues seen in the full intermediate
   // points code that have been seen
   function geodesicConvertLine(startLatLng, endLatLng, convertedPoints) {
-    var R = 6367000.0; // earth radius in meters (doesn't have to be exact)
-    var d2r = Math.PI/180.0;
-    var r2d = 180.0/Math.PI;
 
     // maths based on https://edwilliams.org/avform.htm#Int
 
@@ -41,7 +43,7 @@
 
     var dLng = lng2-lng1;
 
-    var segments = Math.floor(Math.abs(dLng * R / 5000));
+    var segments = Math.floor(Math.abs(dLng * earthR / 5000));
 
     if (segments > 1) {
       // pre-calculate some constant values for the loop
@@ -152,13 +154,10 @@
     },
 
     _calcPoints: function() {
-      var R = 6367000.0; //earth radius in meters
-      var d2r = Math.PI/180.0;
-      var r2d = 180.0/Math.PI;
 //console.log("geodesicCircle: radius = "+this._radius+"m, centre "+this._latlng.lat+","+this._latlng.lng);
 
       // circle radius as an angle from the centre of the earth
-      var radRadius = this._radius / R;
+      var radRadius = this._radius / earthR;
 
 //console.log(" (radius in radians "+radRadius);
 
