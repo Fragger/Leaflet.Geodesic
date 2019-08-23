@@ -99,29 +99,34 @@
 
     _geodesicConvertLines: geodesicConvertLines,
 
+    _geodesicConvert: function () {
+      this._latlngs = this._geodesicConvertLines(this._latlngsinit);
+      this._convertLatLngs(this._latlngs); // update bounds
+    },
+
     options: polyOptions,
 
     initialize: function (latlngs, options) {
-      L.Polyline.prototype.initialize.call(this, this._geodesicConvertLines(latlngs), options);
-      this._latlngsinit = this._convertLatLngs(latlngs);
+      L.Polyline.prototype.initialize.call(this, latlngs, options);
+      this._geodesicConvert();
     },
 
     getLatLngs: function () {
       return this._latlngsinit;
     },
 
-    setLatLngs: function (latlngs) {
+    _setLatLngs: function (latlngs) {
+      this._bounds = L.latLngBounds();
       this._latlngsinit = this._convertLatLngs(latlngs);
-      return this.redraw();
     },
 
-    addLatLng: function (latlng) {
-      this._latlngsinit.push(L.latLng(latlng));
-      return this.redraw();
+    _defaultShape: function () {
+      var latlngs = this._latlngsinit;
+      return L.LineUtil.isFlat(latlngs) ? latlngs : latlngs[0];
     },
 
     redraw: function () {
-      this._latlngs = this._convertLatLngs(this._geodesicConvertLines(this._latlngsinit));
+      this._geodesicConvert();
       return L.Path.prototype.redraw.call(this);
     }
   };
