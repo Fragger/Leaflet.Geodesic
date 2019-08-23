@@ -47,6 +47,22 @@
   }
 
 
+  function processPoly (latlngs, fn) {
+    var result = [];
+
+    // var isPolygon = this.options.fill; // !wrong: L.Draw use options.fill with polylines
+    var isPolygon = this instanceof L.Polygon;
+    if (isPolygon) {
+      latlngs.push(latlngs[0]);
+    } else {
+      result.push(latlngs[0]);
+    }
+    for (var i = 0, len = latlngs.length - 1; i < len; i++) {
+      fn.call(this, latlngs[i], latlngs[i+1], result);
+    }
+    return result;
+  }
+
   function geodesicConvertLines (latlngs) {
     if (latlngs.length === 0) {
       return [];
@@ -61,19 +77,7 @@
     // within +-180 degrees
     latlngs = latlngs.map(function (a) { return L.latLng(a.lat, a.lng-lngOffset).wrap(); });
 
-    var geodesiclatlngs = [];
-
-    // var isPolygon = this.options.fill; // !wrong: L.Draw use options.fill with polylines
-    var isPolygon = this instanceof L.Polygon;
-    if (!isPolygon) {
-      geodesiclatlngs.push(latlngs[0]);
-    }
-    for (var i = 0, len = latlngs.length - 1; i < len; i++) {
-      this._geodesicConvertLine(latlngs[i], latlngs[i+1], geodesiclatlngs);
-    }
-    if (isPolygon) {
-      this._geodesicConvertLine(latlngs[len], latlngs[0], geodesiclatlngs);
-    }
+    var geodesiclatlngs = this._processPoly(latlngs,this._geodesicConvertLine);
 
     // now add back the offset subtracted above. no wrapping here - the drawing code handles
     // things better when there's no sudden jumps in coordinates. yes, lines will extend
@@ -89,6 +93,8 @@
 
   var PolyMixin = {
     _geodesicConvertLine: geodesicConvertLine,
+
+    _processPoly: processPoly,
 
     _geodesicConvertLines: geodesicConvertLines,
 
