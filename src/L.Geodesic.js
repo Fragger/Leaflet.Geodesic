@@ -47,7 +47,7 @@
   }
 
 
-  function geodesicConvertLines (latlngs, fill) {
+  function geodesicConvertLines (latlngs) {
     if (latlngs.length === 0) {
       return [];
     }
@@ -70,13 +70,15 @@
 
     var geodesiclatlngs = [];
 
-    if (!fill) {
+    // var isPolygon = this.options.fill; // !wrong: L.Draw use options.fill with polylines
+    var isPolygon = this instanceof L.Polygon;
+    if (!isPolygon) {
       geodesiclatlngs.push(latlngs[0]);
     }
     for (i = 0, len = latlngs.length - 1; i < len; i++) {
       this._geodesicConvertLine(latlngs[i], latlngs[i+1], geodesiclatlngs);
     }
-    if (fill) {
+    if (isPolygon) {
       this._geodesicConvertLine(latlngs[len], latlngs[0], geodesiclatlngs);
     }
 
@@ -89,14 +91,14 @@
   }
 
 
-  function geodesicPoly (Klass, fill) {
+  function geodesicPoly (Klass) {
     return Klass.extend({
       _geodesicConvertLine: geodesicConvertLine,
 
       _geodesicConvertLines: geodesicConvertLines,
 
       initialize: function (latlngs, options) {
-        Klass.prototype.initialize.call(this, this._geodesicConvertLines(latlngs, fill), options);
+        Klass.prototype.initialize.call(this, this._geodesicConvertLines(latlngs), options);
         this._latlngsinit = this._convertLatLngs(latlngs);
       },
 
@@ -115,7 +117,7 @@
       },
 
       redraw: function () {
-        this._latlngs = this._convertLatLngs(this._geodesicConvertLines(this._latlngsinit, fill));
+        this._latlngs = this._convertLatLngs(this._geodesicConvertLines(this._latlngsinit));
         return Klass.prototype.redraw.call(this);
       }
 
@@ -123,8 +125,8 @@
   }
 
 
-  L.GeodesicPolyline = geodesicPoly(L.Polyline, false);
-  L.GeodesicPolygon = geodesicPoly(L.Polygon, true);
+  L.GeodesicPolyline = geodesicPoly(L.Polyline);
+  L.GeodesicPolygon = geodesicPoly(L.Polygon);
 
 
   L.GeodesicCircle = L.Polygon.extend({
