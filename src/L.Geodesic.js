@@ -4,34 +4,6 @@
   var r2d = 180.0/Math.PI;
   var earthR = 6367000.0; // earth radius in meters (doesn't have to be exact)
 
-  function geodesicPoly (Klass, fill) {
-    return Klass.extend({
-      initialize: function (latlngs, options) {
-        Klass.prototype.initialize.call(this, L.geodesicConvertLines(latlngs, fill), options);
-        this._latlngsinit = this._convertLatLngs(latlngs);
-      },
-
-      getLatLngs: function () {
-        return this._latlngsinit;
-      },
-
-      setLatLngs: function (latlngs) {
-        this._latlngsinit = this._convertLatLngs(latlngs);
-        return this.redraw();
-      },
-
-      addLatLng: function (latlng) {
-        this._latlngsinit.push(L.latLng(latlng));
-        return this.redraw();
-      },
-
-      redraw: function () {
-        this._latlngs = this._convertLatLngs(L.geodesicConvertLines(this._latlngsinit, fill));
-        return Klass.prototype.redraw.call(this);
-      }
-    });
-  }
-
   // alternative geodesic line intermediate points function
   // as north/south lines have very little curvature in the projection, we can use longitude (east/west) seperation
   // to calculate intermediate points. hopefully this will avoid the rounding issues seen in the full intermediate
@@ -75,7 +47,7 @@
   }
 
 
-  L.geodesicConvertLines = function (latlngs, fill) {
+  function geodesicConvertLines (latlngs, fill) {
     if (latlngs.length === 0) {
       return [];
     }
@@ -102,10 +74,10 @@
       geodesiclatlngs.push(latlngs[0]);
     }
     for (i = 0, len = latlngs.length - 1; i < len; i++) {
-      geodesicConvertLine(latlngs[i], latlngs[i+1], geodesiclatlngs);
+      this._geodesicConvertLine(latlngs[i], latlngs[i+1], geodesiclatlngs);
     }
     if (fill) {
-      geodesicConvertLine(latlngs[len], latlngs[0], geodesiclatlngs);
+      this._geodesicConvertLine(latlngs[len], latlngs[0], geodesiclatlngs);
     }
 
     // now add back the offset subtracted above. no wrapping here - the drawing code handles
@@ -114,7 +86,42 @@
     geodesiclatlngs = geodesiclatlngs.map(function (a) { return L.latLng(a.lat, a.lng+lngOffset); });
 
     return geodesiclatlngs;
-  };
+  }
+
+
+  function geodesicPoly (Klass, fill) {
+    return Klass.extend({
+      _geodesicConvertLine: geodesicConvertLine,
+
+      _geodesicConvertLines: geodesicConvertLines,
+
+      initialize: function (latlngs, options) {
+        Klass.prototype.initialize.call(this, this._geodesicConvertLines(latlngs, fill), options);
+        this._latlngsinit = this._convertLatLngs(latlngs);
+      },
+
+      getLatLngs: function () {
+        return this._latlngsinit;
+      },
+
+      setLatLngs: function (latlngs) {
+        this._latlngsinit = this._convertLatLngs(latlngs);
+        return this.redraw();
+      },
+
+      addLatLng: function (latlng) {
+        this._latlngsinit.push(L.latLng(latlng));
+        return this.redraw();
+      },
+
+      redraw: function () {
+        this._latlngs = this._convertLatLngs(this._geodesicConvertLines(this._latlngsinit, fill));
+        return Klass.prototype.redraw.call(this);
+      }
+
+    });
+  }
+
 
   L.GeodesicPolyline = geodesicPoly(L.Polyline, false);
   L.GeodesicPolygon = geodesicPoly(L.Polygon, true);
@@ -189,6 +196,7 @@
 
       return points;
     }
+
   });
 
 
