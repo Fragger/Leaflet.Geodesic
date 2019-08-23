@@ -52,13 +52,6 @@
       return [];
     }
 
-    for (var i = 0, len = latlngs.length; i < len; i++) {
-      if (L.Util.isArray(latlngs[i]) && typeof latlngs[i][0] !== 'number') {
-        return;
-      }
-      latlngs[i] = L.latLng(latlngs[i]);
-    }
-
     // geodesic calculations have issues when crossing the anti-meridian. so offset the points
     // so this isn't an issue, then add back the offset afterwards
     // a center longitude would be ideal - but the start point longitude will be 'good enough'
@@ -75,7 +68,7 @@
     if (!isPolygon) {
       geodesiclatlngs.push(latlngs[0]);
     }
-    for (i = 0, len = latlngs.length - 1; i < len; i++) {
+    for (var i = 0, len = latlngs.length - 1; i < len; i++) {
       this._geodesicConvertLine(latlngs[i], latlngs[i+1], geodesiclatlngs);
     }
     if (isPolygon) {
