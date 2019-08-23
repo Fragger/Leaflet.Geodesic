@@ -19,7 +19,7 @@
 
     var dLng = lng2-lng1;
 
-    var segments = Math.floor(Math.abs(dLng * earthR / 5000));
+    var segments = Math.floor(Math.abs(dLng * earthR / this.options.segmentsCoeff));
 
     if (segments > 1) {
       // pre-calculate some constant values for the loop
@@ -90,10 +90,16 @@
     return geodesiclatlngs;
   }
 
+  var polyOptions = {
+    segmentsCoeff: 5000
+  };
+
   var PolyMixin = {
     _geodesicConvertLine: geodesicConvertLine,
 
     _geodesicConvertLines: geodesicConvertLines,
+
+    options: polyOptions,
 
     initialize: function (latlngs, options) {
       L.Polyline.prototype.initialize.call(this, this._geodesicConvertLines(latlngs), options);
@@ -122,10 +128,15 @@
 
   L.GeodesicPolyline = L.Polyline.extend(PolyMixin);
 
-  delete PolyMixin.options; // workaround for https://github.com/Leaflet/Leaflet/pull/6766/
+  PolyMixin.options = polyOptions; // workaround for https://github.com/Leaflet/Leaflet/pull/6766/
   L.GeodesicPolygon = L.Polygon.extend(PolyMixin);
 
   L.GeodesicCircle = L.Polygon.extend({
+    options: {
+      segmentsCoeff: 1000,
+      segmentsMin: 48
+    },
+
     initialize: function (latlng, options, legacyOptions) {
       if (typeof options === 'number') {
         // Backwards compatibility with 0.7.x factory (latlng, radius, options?)
@@ -135,10 +146,6 @@
       this._radius = options.radius; // note: https://github.com/Leaflet/Leaflet/issues/6656
       var points = this._calcPoints();
       L.Polygon.prototype.initialize.call(this, points, options);
-    },
-
-    options: {
-      fill: true
     },
 
     setLatLng: function (latlng) {
@@ -183,7 +190,8 @@
         return L.latLng(lat * r2d,lng * r2d);
       };
 
-      var segments = Math.max(48,Math.floor(this._radius/1000));
+      var o = this.options;
+      var segments = Math.max(o.segmentsMin,Math.floor(this._radius/o.segmentsCoeff));
       var points = [];
       for (var i=0; i<segments; i++) {
         var angle = Math.PI*2/segments*i;
