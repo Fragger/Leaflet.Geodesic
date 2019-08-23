@@ -90,44 +90,40 @@
     return geodesiclatlngs;
   }
 
+  var PolyMixin = {
+    _geodesicConvertLine: geodesicConvertLine,
 
-  function geodesicPoly (Klass) {
-    return Klass.extend({
-      _geodesicConvertLine: geodesicConvertLine,
+    _geodesicConvertLines: geodesicConvertLines,
 
-      _geodesicConvertLines: geodesicConvertLines,
+    initialize: function (latlngs, options) {
+      L.Polyline.prototype.initialize.call(this, this._geodesicConvertLines(latlngs), options);
+      this._latlngsinit = this._convertLatLngs(latlngs);
+    },
 
-      initialize: function (latlngs, options) {
-        Klass.prototype.initialize.call(this, this._geodesicConvertLines(latlngs), options);
-        this._latlngsinit = this._convertLatLngs(latlngs);
-      },
+    getLatLngs: function () {
+      return this._latlngsinit;
+    },
 
-      getLatLngs: function () {
-        return this._latlngsinit;
-      },
+    setLatLngs: function (latlngs) {
+      this._latlngsinit = this._convertLatLngs(latlngs);
+      return this.redraw();
+    },
 
-      setLatLngs: function (latlngs) {
-        this._latlngsinit = this._convertLatLngs(latlngs);
-        return this.redraw();
-      },
+    addLatLng: function (latlng) {
+      this._latlngsinit.push(L.latLng(latlng));
+      return this.redraw();
+    },
 
-      addLatLng: function (latlng) {
-        this._latlngsinit.push(L.latLng(latlng));
-        return this.redraw();
-      },
+    redraw: function () {
+      this._latlngs = this._convertLatLngs(this._geodesicConvertLines(this._latlngsinit));
+      return L.Path.prototype.redraw.call(this);
+    }
+  };
 
-      redraw: function () {
-        this._latlngs = this._convertLatLngs(this._geodesicConvertLines(this._latlngsinit));
-        return Klass.prototype.redraw.call(this);
-      }
+  L.GeodesicPolyline = L.Polyline.extend(PolyMixin);
 
-    });
-  }
-
-
-  L.GeodesicPolyline = geodesicPoly(L.Polyline);
-  L.GeodesicPolygon = geodesicPoly(L.Polygon);
-
+  delete PolyMixin.options; // workaround for https://github.com/Leaflet/Leaflet/pull/6766/
+  L.GeodesicPolygon = L.Polygon.extend(PolyMixin);
 
   L.GeodesicCircle = L.Polygon.extend({
     initialize: function (latlng, options, legacyOptions) {
