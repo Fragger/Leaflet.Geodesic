@@ -4,24 +4,28 @@
   var r2d = 180.0/Math.PI;
   var earthR = 6367000.0; // earth radius in meters (doesn't have to be exact)
 
-  function geodesicPoly(Klass, fill) {
+  function geodesicPoly (Klass, fill) {
     return Klass.extend({
       initialize: function (latlngs, options) {
         Klass.prototype.initialize.call(this, L.geodesicConvertLines(latlngs, fill), options);
         this._latlngsinit = this._convertLatLngs(latlngs);
       },
+
       getLatLngs: function () {
         return this._latlngsinit;
       },
+
       setLatLngs: function (latlngs) {
         this._latlngsinit = this._convertLatLngs(latlngs);
         return this.redraw();
       },
+
       addLatLng: function (latlng) {
         this._latlngsinit.push(L.latLng(latlng));
         return this.redraw();
       },
-      redraw: function() {
+
+      redraw: function () {
         this._latlngs = this._convertLatLngs(L.geodesicConvertLines(this._latlngsinit, fill));
         return Klass.prototype.redraw.call(this);
       }
@@ -32,7 +36,7 @@
   // as north/south lines have very little curvature in the projection, we can use longitude (east/west) seperation
   // to calculate intermediate points. hopefully this will avoid the rounding issues seen in the full intermediate
   // points code that have been seen
-  function geodesicConvertLine(startLatLng, endLatLng, convertedPoints) {
+  function geodesicConvertLine (startLatLng, endLatLng, convertedPoints) {
 
     // maths based on https://edwilliams.org/avform.htm#Int
 
@@ -62,14 +66,13 @@
         var iLat = Math.atan( (sinLat1CosLat2*Math.sin(lng2-iLng) + sinLat2CosLat1*Math.sin(iLng-lng1))
                               / cosLat1CosLat2SinDLng);
 
-        var point = L.latLng ( [iLat*r2d, iLng*r2d] );
+        var point = L.latLng(iLat*r2d, iLng*r2d);
         convertedPoints.push(point);
       }
     }
 
     convertedPoints.push(L.latLng(endLatLng));
   }
-
 
 
   L.geodesicConvertLines = function (latlngs, fill) {
@@ -91,24 +94,24 @@
 
     // points are wrapped after being offset relative to the first point coordinate, so they're
     // within +-180 degrees
-    latlngs = latlngs.map(function(a){ return L.latLng(a.lat, a.lng-lngOffset).wrap(); });
+    latlngs = latlngs.map(function (a) { return L.latLng(a.lat, a.lng-lngOffset).wrap(); });
 
     var geodesiclatlngs = [];
 
-    if(!fill) {
+    if (!fill) {
       geodesiclatlngs.push(latlngs[0]);
     }
     for (i = 0, len = latlngs.length - 1; i < len; i++) {
       geodesicConvertLine(latlngs[i], latlngs[i+1], geodesiclatlngs);
     }
-    if(fill) {
+    if (fill) {
       geodesicConvertLine(latlngs[len], latlngs[0], geodesiclatlngs);
     }
 
     // now add back the offset subtracted above. no wrapping here - the drawing code handles
     // things better when there's no sudden jumps in coordinates. yes, lines will extend
     // beyond +-180 degrees - but they won't be 'broken'
-    geodesiclatlngs = geodesiclatlngs.map(function(a){ return L.latLng(a.lat, a.lng+lngOffset); });
+    geodesiclatlngs = geodesiclatlngs.map(function (a) { return L.latLng(a.lat, a.lng+lngOffset); });
 
     return geodesiclatlngs;
   };
@@ -149,17 +152,14 @@
       return this._latlng;
     },
 
-    getRadius: function() {
+    getRadius: function () {
       return this._radius;
     },
 
-    _calcPoints: function() {
-//console.log("geodesicCircle: radius = "+this._radius+"m, centre "+this._latlng.lat+","+this._latlng.lng);
+    _calcPoints: function () {
 
       // circle radius as an angle from the centre of the earth
       var radRadius = this._radius / earthR;
-
-//console.log(" (radius in radians "+radRadius);
 
       // pre-calculate various values used for every point on the circle
       var centreLat = this._latlng.lat * d2r;
@@ -171,27 +171,24 @@
       var cosRadRadius = Math.cos(radRadius);
       var sinRadRadius = Math.sin(radRadius);
 
-      var calcLatLngAtAngle = function(angle) {
+      var calcLatLngAtAngle = function (angle) {
         var lat = Math.asin(sinCentreLat*cosRadRadius + cosCentreLat*sinRadRadius*Math.cos(angle));
         var lng = centreLng + Math.atan2(Math.sin(angle)*sinRadRadius*cosCentreLat, cosRadRadius-sinCentreLat*Math.sin(lat));
 
         return L.latLng(lat * r2d,lng * r2d);
       };
 
-
       var segments = Math.max(48,Math.floor(this._radius/1000));
-//console.log(" (drawing circle as "+segments+" lines)");
       var points = [];
       for (var i=0; i<segments; i++) {
         var angle = Math.PI*2/segments*i;
 
         var point = calcLatLngAtAngle(angle);
-        points.push ( point );
+        points.push(point);
       }
 
       return points;
-    },
-
+    }
   });
 
 
