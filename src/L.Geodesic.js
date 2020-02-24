@@ -1,105 +1,209 @@
 (function () {
-  function geodesicPoly(Klass, fill) {
-    return Klass.extend({
-      initialize: function (latlngs, options) {
-        Klass.prototype.initialize.call(this, L.geodesicConvertLines(latlngs, fill), options);
-        this._latlngsinit = this._convertLatLngs(latlngs);
-      },
-      getLatLngs: function () {
-        return this._latlngsinit;
-      },
-      setLatLngs: function (latlngs) {
-        this._latlngsinit = this._convertLatLngs(latlngs);
-        this._latlngs = this._convertLatLngs(L.geodesicConvertLines(this._latlngsinit, fill));
-        return this.redraw();
-      },
-      addLatLng: function (latlng) {
-        this._latlngsinit.push(L.latLng(latlng));
-        this._latlngs = this._convertLatLngs(L.geodesicConvertLines(this._latlngsinit, fill));
-        return this.redraw();
-      },
-      spliceLatLngs: function () { // (Number index, Number howMany)
-        var removed = [].splice.apply(this._latlngsinit, arguments);
-        this._convertLatLngs(this._latlngsinit);
-        this._latlngs = this._convertLatLngs(L.geodesicConvertLines(this._latlngsinit, fill));
-        this.redraw();
-        return removed;
-      }
-    });
-  }
-  
-  function geodesicConvertLine(startLatlng, endLatlng, convertedPoints) {
-    var i,
-      R = 6378137, // earth radius in meters (doesn't have to be exact)
-      maxlength = 5000, // meters before splitting
-      d2r = L.LatLng.DEG_TO_RAD,
-      r2d = L.LatLng.RAD_TO_DEG,
-      lat1, lat2, lng1, lng2, dLng, d, segments,
-      f, A, B, x, y, z, fLat, fLng;
-  
-    dLng = Math.abs(endLatlng.lng - startLatlng.lng) * d2r;
-    lat1 = startLatlng.lat * d2r;
-    lat2 = endLatlng.lat * d2r;
-    lng1 = startLatlng.lng * d2r;
-    lng2 = endLatlng.lng * d2r;
+  // constants
+  var d2r = Math.PI/180.0;
+  var r2d = 180.0/Math.PI;
+  var earthR = 6367000.0; // earth radius in meters (doesn't have to be exact)
 
-    // http://en.wikipedia.org/wiki/Great-circle_distance
-    d = Math.atan2(Math.sqrt( Math.pow(Math.cos(lat2) * Math.sin(dLng), 2) + Math.pow(Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng), 2) ), Math.sin(lat1) * Math.sin(lat2) + Math.cos(lat1) * Math.cos(lat2) * Math.cos(dLng));
+  // alternative geodesic line intermediate points function
+  // as north/south lines have very little curvature in the projection, we can use longitude (east/west) seperation
+  // to calculate intermediate points. hopefully this will avoid the rounding issues seen in the full intermediate
+  // points code that have been seen
+  function geodesicConvertLine (start, end, convertedPoints) { // push intermediate points into convertedPoints
 
-    segments = Math.ceil(d * R / maxlength);
-    for (i = 1; i <= segments; i++) {
-      // http://williams.best.vwh.net/avform.htm#Intermediate
-      f = i / segments;
-      A = Math.sin((1-f)*d) / Math.sin(d);
-      B = Math.sin(f*d) / Math.sin(d);
-      x = A * Math.cos(lat1) * Math.cos(lng1) + B * Math.cos(lat2) * Math.cos(lng2);
-      y = A * Math.cos(lat1) * Math.sin(lng1) + B * Math.cos(lat2) * Math.sin(lng2);
-      z = A * Math.sin(lat1)                  + B * Math.sin(lat2);
-      fLat = r2d * Math.atan2(z, Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2)));
-      fLng = r2d * Math.atan2(y, x);
+    var lng1 = start.lng * d2r;
+    var lng2 = end.lng * d2r;
+    var dLng = lng1-lng2;
 
-      convertedPoints.push(L.latLng([fLat, fLng]));
+    var segments = Math.floor(Math.abs(dLng * earthR / this.options.segmentsCoeff));
+    if (segments < 2) { return; }
+
+    // maths based on https://edwilliams.org/avform.htm#Int
+
+    // pre-calculate some constant values for the loop
+    var lat1 = start.lat * d2r;
+    var lat2 = end.lat * d2r;
+    var sinLat1 = Math.sin(lat1);
+    var sinLat2 = Math.sin(lat2);
+    var cosLat1 = Math.cos(lat1);
+    var cosLat2 = Math.cos(lat2);
+    var sinLat1CosLat2 = sinLat1*cosLat2;
+    var sinLat2CosLat1 = sinLat2*cosLat1;
+    var cosLat1CosLat2SinDLng = cosLat1*cosLat2*Math.sin(dLng);
+
+    for (var i=1; i < segments; i++) {
+      var iLng = lng1-dLng*(i/segments);
+      var iLat = Math.atan(
+        (sinLat1CosLat2 * Math.sin(iLng-lng2) - sinLat2CosLat1 * Math.sin(iLng-lng1))
+          / cosLat1CosLat2SinDLng
+      );
+      convertedPoints.push(L.latLng(iLat*r2d, iLng*r2d));
     }
   }
 
-  L.geodesicConvertLines = function (latlngs, fill) {
-    var i, j, len, geodesiclatlngs = [];
-    for (i = 0, len = latlngs.length; i < len; i++) {
-      if (L.Util.isArray(latlngs[i]) && typeof latlngs[i][0] !== 'number') {
-        return;
-      }
-      latlngs[i] = L.latLng(latlngs[i]);
+
+  // iterate pairs of connected vertices with fn(), adding new intermediate vertices (if returned)
+  function processPoly (latlngs, fn) {
+    var result = [];
+
+    // var isPolygon = this.options.fill; // !wrong: L.Draw use options.fill with polylines
+    var isPolygon = this instanceof L.Polygon;
+    if (isPolygon) {
+      latlngs.push(latlngs[0]);
+    } else {
+      result.push(latlngs[0]);
     }
-    
-    if(!fill) {
-      geodesiclatlngs.push(latlngs[0]);
+    for (var i = 0, len = latlngs.length - 1; i < len; i++) {
+      fn.call(this, latlngs[i], latlngs[i+1], result);
+      result.push(latlngs[i+1]);
     }
-    for (i = 0, len = latlngs.length - 1; i < len; i++) {
-      geodesicConvertLine(latlngs[i], latlngs[i+1], geodesiclatlngs);
+    return result;
+  }
+
+  function geodesicConvertLines (latlngs) {
+    if (latlngs.length === 0) {
+      return [];
     }
-    if(fill) {
-      geodesicConvertLine(latlngs[len], latlngs[0], geodesiclatlngs);
-    }
+
+    // geodesic calculations have issues when crossing the anti-meridian. so offset the points
+    // so this isn't an issue, then add back the offset afterwards
+    // a center longitude would be ideal - but the start point longitude will be 'good enough'
+    var lngOffset = latlngs[0].lng;
+
+    // points are wrapped after being offset relative to the first point coordinate, so they're
+    // within +-180 degrees
+    latlngs = latlngs.map(function (a) { return L.latLng(a.lat, a.lng-lngOffset).wrap(); });
+
+    var geodesiclatlngs = this._processPoly(latlngs,this._geodesicConvertLine);
+
+    // now add back the offset subtracted above. no wrapping here - the drawing code handles
+    // things better when there's no sudden jumps in coordinates. yes, lines will extend
+    // beyond +-180 degrees - but they won't be 'broken'
+    geodesiclatlngs = geodesiclatlngs.map(function (a) { return L.latLng(a.lat, a.lng+lngOffset); });
+
     return geodesiclatlngs;
   }
-  
-  L.GeodesicPolyline = geodesicPoly(L.Polyline, 0);
-  L.GeodesicPolygon = geodesicPoly(L.Polygon, 1);
 
-  //L.GeodesicMultiPolyline = createMulti(L.GeodesicPolyline);
-  //L.GeodesicMultiPolygon = createMulti(L.GeodesicPolygon);
+  var polyOptions = {
+    segmentsCoeff: 5000
+  };
 
-  /*L.GeodesicMultiPolyline = L.MultiPolyline.extend({
+  var PolyMixin = {
+    _geodesicConvertLine: geodesicConvertLine,
+
+    _processPoly: processPoly,
+
+    _geodesicConvertLines: geodesicConvertLines,
+
+    _geodesicConvert: function () {
+      this._latlngs = this._geodesicConvertLines(this._latlngsinit);
+      this._convertLatLngs(this._latlngs); // update bounds
+    },
+
+    options: polyOptions,
+
     initialize: function (latlngs, options) {
-      L.MultiPolyline.prototype.initialize.call(this, L.geodesicConvertLines(latlngs), options);
-    }
-  });*/
+      L.Polyline.prototype.initialize.call(this, latlngs, options);
+      this._geodesicConvert();
+    },
 
-  /*L.GeodesicMultiPolygon = L.MultiPolygon.extend({
-    initialize: function (latlngs, options) {
-      L.MultiPolygon.prototype.initialize.call(this, L.geodesicConvertLines(latlngs), options);
+    getLatLngs: function () {
+      return this._latlngsinit;
+    },
+
+    _setLatLngs: function (latlngs) {
+      this._bounds = L.latLngBounds();
+      this._latlngsinit = this._convertLatLngs(latlngs);
+    },
+
+    _defaultShape: function () {
+      var latlngs = this._latlngsinit;
+      return L.LineUtil.isFlat(latlngs) ? latlngs : latlngs[0];
+    },
+
+    redraw: function () {
+      this._geodesicConvert();
+      return L.Path.prototype.redraw.call(this);
     }
-  });*/
+  };
+
+  L.GeodesicPolyline = L.Polyline.extend(PolyMixin);
+
+  PolyMixin.options = polyOptions; // workaround for https://github.com/Leaflet/Leaflet/pull/6766/
+  L.GeodesicPolygon = L.Polygon.extend(PolyMixin);
+
+  L.GeodesicCircle = L.Polygon.extend({
+    options: {
+      segmentsCoeff: 1000,
+      segmentsMin: 48
+    },
+
+    initialize: function (latlng, options, legacyOptions) {
+      if (typeof options === 'number') {
+        // Backwards compatibility with 0.7.x factory (latlng, radius, options?)
+        options = L.extend({}, legacyOptions, {radius: options});
+      }
+      this._latlng = L.latLng(latlng);
+      this._radius = options.radius; // note: https://github.com/Leaflet/Leaflet/issues/6656
+      var points = this._calcPoints();
+      L.Polygon.prototype.initialize.call(this, points, options);
+    },
+
+    setLatLng: function (latlng) {
+      this._latlng = L.latLng(latlng);
+      var points = this._calcPoints();
+      this.setLatLngs(points);
+    },
+
+    setRadius: function (radius) {
+      this._radius = radius;
+      var points = this._calcPoints();
+      this.setLatLngs(points);
+    },
+
+    getLatLng: function () {
+      return this._latlng;
+    },
+
+    getRadius: function () {
+      return this._radius;
+    },
+
+    _calcPoints: function () {
+
+      // circle radius as an angle from the centre of the earth
+      var radRadius = this._radius / earthR;
+
+      // pre-calculate various values used for every point on the circle
+      var centreLat = this._latlng.lat * d2r;
+      var centreLng = this._latlng.lng * d2r;
+
+      var cosCentreLat = Math.cos(centreLat);
+      var sinCentreLat = Math.sin(centreLat);
+
+      var cosRadRadius = Math.cos(radRadius);
+      var sinRadRadius = Math.sin(radRadius);
+
+      var calcLatLngAtAngle = function (angle) {
+        var lat = Math.asin(sinCentreLat*cosRadRadius + cosCentreLat*sinRadRadius*Math.cos(angle));
+        var lng = centreLng + Math.atan2(Math.sin(angle)*sinRadRadius*cosCentreLat, cosRadRadius-sinCentreLat*Math.sin(lat));
+
+        return L.latLng(lat * r2d,lng * r2d);
+      };
+
+      var o = this.options;
+      var segments = Math.max(o.segmentsMin,Math.floor(this._radius/o.segmentsCoeff));
+      var points = [];
+      for (var i=0; i<segments; i++) {
+        var angle = Math.PI*2/segments*i;
+
+        var point = calcLatLngAtAngle(angle);
+        points.push(point);
+      }
+
+      return points;
+    }
+
+  });
 
 
   L.geodesicPolyline = function (latlngs, options) {
@@ -109,15 +213,9 @@
   L.geodesicPolygon = function (latlngs, options) {
     return new L.GeodesicPolygon(latlngs, options);
   };
-  
-  /*
-  L.geodesicMultiPolyline = function (latlngs, options) {
-    return new L.GeodesicMultiPolyline(latlngs, options);
+
+  L.geodesicCircle = function (latlng, radius, options) {
+    return new L.GeodesicCircle(latlng, radius, options);
   };
 
-  L.geodesicMultiPolygon = function (latlngs, options) {
-    return new L.GeodesicMultiPolygon(latlngs, options);
-  };
-
-  */
 }());
